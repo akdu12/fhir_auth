@@ -168,6 +168,10 @@ class SmartClient extends FhirClient {
   }
 
   Future<Unit> get _refresh async {
+    final refreshToken = (await oauthStorage.read(tokenKey)).refreshToken;
+    if (refreshToken == null) {
+      throw TokenExpiredException();
+    }
     final tokenRequest = TokenRequest(
       _clientId,
       _redirectUri.toString(),
@@ -176,7 +180,7 @@ class SmartClient extends FhirClient {
         authUrl.toString(),
         tokenUrl.toString(),
       ),
-      refreshToken: (await oauthStorage.read(tokenKey)).refreshToken,
+      refreshToken: refreshToken,
       grantType: 'refresh_token',
       scopes: scopes,
       issuer: _clientId,

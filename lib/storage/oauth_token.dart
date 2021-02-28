@@ -13,7 +13,8 @@ class OauthToken {
         accessToken: data['access_token'],
         refreshToken: data['refresh_token'],
         idToken: data['id_token'],
-        expiresAt: DateTime.fromMillisecondsSinceEpoch(data['expires_at']));
+        expiresAt:
+            DateTime.fromMillisecondsSinceEpoch(data['expires_at'] as int));
   }
 
   final String accessToken;
@@ -26,7 +27,7 @@ class OauthToken {
       'access_token': accessToken,
       'refresh_token': refreshToken,
       'id_token': idToken,
-      'expires_at': DateTime.now().millisecondsSinceEpoch
+      'expires_at': expiresAt.millisecondsSinceEpoch
     };
     return jsonEncode(token);
   }
