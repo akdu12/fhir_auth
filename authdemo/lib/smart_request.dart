@@ -1,3 +1,4 @@
+import 'package:authdemo/in_memory_storage.dart';
 import 'package:fhir/primitive_types/primitive_types.dart';
 import 'package:fhir/r4.dart';
 import 'package:fhir_at_rest/r4.dart';
@@ -15,6 +16,7 @@ Future smartRequest({
   FhirUri fhirCallback,
 }) async {
   final client = SmartClient(
+    oauthStorage: InMemoryStorage(),
     baseUrl: FhirUri(url),
     clientId: clientId,
     redirectUri: fhirCallback,
@@ -28,7 +30,7 @@ Future smartRequest({
       ],
       openid: true,
       offlineAccess: true,
-    ),
+    ).scopesList(),
     secret: secret,
     authUrl: authUrl == null ? null : FhirUri(authUrl),
     tokenUrl: tokenUrl == null ? null : FhirUri(tokenUrl),

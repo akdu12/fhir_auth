@@ -5,7 +5,7 @@ import 'package:fhir/primitive_types/primitive_types.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import 'fhir_client.dart';
+import 'package:fhir_auth/fhir_client.dart';
 
 class GcsClient extends FhirClient {
   GcsClient({@required this.baseUrl, List<String> scopes, String clientId}) {
@@ -43,5 +43,12 @@ class GcsClient extends FhirClient {
     }
     isLoggedIn = false;
     return unit;
+  }
+
+  /// check if you already logged
+  /// the method try to retrieve and validate a token
+  @override
+  Future<bool> alreadyLoggedIn() async {
+    return googleSignIn.isSignedIn();
   }
 }

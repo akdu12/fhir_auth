@@ -10,7 +10,7 @@ import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:http/http.dart';
 
-import 'fhir_client.dart';
+import 'package:fhir_auth/fhir_client.dart';
 
 /// the star of our show, who you've all come to see, the Smart object who
 /// will provide the client for interacting with the FHIR server
@@ -121,6 +121,18 @@ class SmartClient extends FhirClient {
       };
     }
     return {};
+  }
+
+  /// check if you already logged
+  /// the method try to retrieve and validate a token
+  @override
+  Future<bool> alreadyLoggedIn() async {
+    try {
+      final token = getToken();
+      return token != null;
+    } on TokenExpiredException {
+      return false;
+    }
   }
 
   /// return auth token for the current authentication

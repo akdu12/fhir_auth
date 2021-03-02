@@ -7,4 +7,6 @@ abstract class FhirClient {
       {'Content-Type': 'application/fhir+json'};
 
   Future<Unit> logout() async => unit;
+
+  Future<bool> alreadyLoggedIn();
 }
