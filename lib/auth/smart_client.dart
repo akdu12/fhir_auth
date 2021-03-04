@@ -1,16 +1,13 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:dartz/dartz.dart';
-import 'package:fhir/r5.dart';
-import 'package:fhir_auth/auth_exception.dart';
+import 'package:fhir_auth/auth/auth_exception.dart';
+import 'package:fhir_auth/auth/fhir_client.dart';
 import 'package:fhir_auth/storage/oauth_storage.dart';
 import 'package:fhir_auth/storage/oauth_token.dart';
 import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:http/http.dart';
-import 'package:fhir_auth/fhir_client.dart';
-
+import 'package:fhir_auth/auth/metadata_discovery_service.dart';
 
 /// the star of our show, who you've all come to see, the Smart object who
 /// will provide the client for interacting with the FHIR server
@@ -18,7 +15,7 @@ class SmartClient extends FhirClient {
   SmartClient({
     @required this.baseUrl,
     @required String clientId,
-    @required FhirUri redirectUri,
+    @required String redirectUri,
     @required this.oauthStorage,
     this.launch,
     this.scopes,
@@ -34,6 +31,9 @@ class SmartClient extends FhirClient {
     _secret = secret;
   }
 
+  /// used to retrieve the authorization and token endpoints
+  MetaDataDiscoveryService metaDataDiscoveryService;
+
   /// used to store token
   OauthStorage oauthStorage;
 
@@ -43,7 +43,7 @@ class SmartClient extends FhirClient {
   /// specify the baseUrl of the Capability Statement (or conformance
   /// statement for Dstu2). Note this may not be the same as the authentication
   /// server or the FHIR data server
-  FhirUri baseUrl;
+  String baseUrl;
 
   /// the clientId of your app, must be pre-registered with the authorization
   /// server
@@ -53,7 +53,7 @@ class SmartClient extends FhirClient {
   /// server, need to follow the instructions from flutter_appauth
   /// https://pub.dev/packages/flutter_appauth
   /// about editing files for Android and iOS
-  FhirUri _redirectUri;
+  String _redirectUri;
 
   /// if there are certain launch strings that need to be included
   String launch;
@@ -65,10 +65,10 @@ class SmartClient extends FhirClient {
   Map<String, String> additionalParameters = <String, String>{};
 
   /// the authorize Url from the Conformance/Capability Statement
-  FhirUri authUrl;
+  String authUrl;
 
   /// the token Url from the Conformance/Capability Statement
-  FhirUri tokenUrl;
+  String tokenUrl;
 
   /// this is for testing, you shouldn't store the secret in the object
   String _secret;
@@ -84,7 +84,10 @@ class SmartClient extends FhirClient {
   Future<Unit> login() async {
     if (authUrl == null || tokenUrl == null) {
       try {
-        await _getEndpoints;
+        final endpoints =
+            await metaDataDiscoveryService.retrieveAuhMetadata(baseUrl);
+        authUrl = endpoints.authUrl;
+        tokenUrl = endpoints.tokenUrl;
       } catch (e) {
         throw AuthException(e.toString());
       }
@@ -156,17 +159,17 @@ class SmartClient extends FhirClient {
     /// other additional parameters are passed, they are included
     final request = AuthorizationTokenRequest(
       _clientId,
-      _redirectUri.toString(),
+      _redirectUri,
       clientSecret: _secret,
       serviceConfiguration: AuthorizationServiceConfiguration(
-        authUrl.toString(),
-        tokenUrl.toString(),
+        authUrl,
+        tokenUrl,
       ),
       scopes: scopes != null ? scopes : null,
     );
     request.additionalParameters = additionalParameters ?? <String, String>{};
     request.additionalParameters['nonce'] = _nonce();
-    request.additionalParameters['aud'] = baseUrl.toString();
+    request.additionalParameters['aud'] = baseUrl;
 
     final authorization = await appAuth.authorizeAndExchangeCode(request);
 
@@ -188,11 +191,11 @@ class SmartClient extends FhirClient {
     }
     final tokenRequest = TokenRequest(
       _clientId,
-      _redirectUri.toString(),
+      _redirectUri,
       clientSecret: _secret,
       serviceConfiguration: AuthorizationServiceConfiguration(
-        authUrl.toString(),
-        tokenUrl.toString(),
+        authUrl,
+        tokenUrl,
       ),
       refreshToken: refreshToken,
       grantType: 'refresh_token',
@@ -213,73 +216,6 @@ class SmartClient extends FhirClient {
     return unit;
   }
 
-  /// Request for the CapabilityStatement (or Conformance) and then identifying
-  /// the authUrl endpoint & tokenurl endpoing
-  Future<Unit> get _getEndpoints async {
-    var thisRequest = '$baseUrl/metadata?mode=full&_format=json';
-
-    var result = await get(thisRequest);
-
-    if (_errorCodeMap.containsKey(result.statusCode)) {
-      if (result.statusCode == 422) {
-        thisRequest = thisRequest.replaceFirst(
-          '_format=json',
-          '_format=application/json',
-        );
-        result = await get(thisRequest);
-      }
-      if (_errorCodeMap.containsKey(result.statusCode)) {
-        throw AuthException('StatusCode: ${result.statusCode}\n${result.body}');
-      }
-    }
-    Map<String, dynamic> returnResult;
-
-    /// because I can't figure out why aidbox only has strings not lists for
-    /// the referencePolicy field
-    if (thisRequest.contains('aidbox')) {
-      returnResult = json.decode(result.body.replaceAll(
-          '"referencePolicy":"local"', '"referencePolicy":["local"]'));
-    } else {
-      returnResult = json.decode(result.body);
-    }
-
-    final CapabilityStatement capabilityStatement =
-        CapabilityStatement.fromJson(returnResult);
-
-    tokenUrl = _getUri(capabilityStatement, 'token');
-    authUrl = _getUri(capabilityStatement, 'authorize');
-
-    /// if either authorize or token are still null, we return a failure
-    if (authUrl == null) {
-      throw AuthException('No Authorize Url in CapabilityStatement');
-    }
-    if (tokenUrl == null) {
-      throw AuthException('No Token Url in CapabilityStatement');
-    }
-    return unit;
-  }
-
-  /// convenience method for finding either the token or authorize endpoint
-  FhirUri _getUri(CapabilityStatement capabilityStatement, String type) {
-    if (capabilityStatement?.rest == null) {
-      return null;
-    } else if (capabilityStatement.rest[0]?.security?.extension_ == null) {
-      return null;
-    } else if (capabilityStatement.rest[0].security.extension_[0]?.extension_ ==
-        null) {
-      return null;
-    } else {
-      final statement = capabilityStatement
-          .rest[0].security.extension_[0].extension_
-          .firstWhere((ext) => ext.url.toString() == type, orElse: () => null);
-      if (statement == null) {
-        return null;
-      } else {
-        return statement.valueUri;
-      }
-    }
-  }
-
   String _nonce({int length}) {
     const _chars =
         'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890';
@@ -287,14 +223,4 @@ class SmartClient extends FhirClient {
     return String.fromCharCodes(Iterable.generate(
         length ?? 10, (_) => _chars.codeUnitAt(_rnd.nextInt(_chars.length))));
   }
-
-  static const _errorCodeMap = {
-    400: 'Bad Request',
-    401: 'Not Authorized',
-    404: 'Not Found',
-    405: 'Method Not Allowed',
-    409: 'Version Conflict',
-    412: 'Version Conflict',
-    422: 'Unprocessable Entity',
-  };
 }

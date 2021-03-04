@@ -1,48 +1,41 @@
 import 'dart:convert';
 
+import 'package:fhir/dstu2.dart' as dstu2;
 import 'package:fhir/r4.dart' as r4;
 import 'package:fhir/r5.dart' as r5;
 import 'package:fhir/stu3.dart' as stu3;
-import 'package:fhir/dstu2.dart' as dstu2;
-import 'package:fhir_auth/auth_exception.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
+import 'package:fhir_auth/auth/auth_exception.dart';
 import 'package:http/http.dart';
 
 /// this class helps find the authorization and token url using the [/metadata]
 /// endpoint.the service support the fhir server version including latest one r5
 
 class MetaDataDiscoveryService {
-  MetaDataDiscoveryService._(this.iss, this._version);
+  MetaDataDiscoveryService._(this._version);
 
-  factory MetaDataDiscoveryService.r4({@required String iss}) {
-    assert(iss != null);
-    return MetaDataDiscoveryService._(iss, FhirServerVersion.r4);
+  factory MetaDataDiscoveryService.r4() {
+    return MetaDataDiscoveryService._(FhirServerVersion.r4);
   }
 
-  factory MetaDataDiscoveryService.r5({@required String iss}) {
-    assert(iss != null);
-    return MetaDataDiscoveryService._(iss, FhirServerVersion.r5);
+  factory MetaDataDiscoveryService.r5() {
+    return MetaDataDiscoveryService._(FhirServerVersion.r5);
   }
 
-  factory MetaDataDiscoveryService.dstu2({@required String iss}) {
-    assert(iss != null);
-    return MetaDataDiscoveryService._(iss, FhirServerVersion.dstu2);
+  factory MetaDataDiscoveryService.dstu2() {
+    return MetaDataDiscoveryService._(FhirServerVersion.dstu2);
   }
 
-  factory MetaDataDiscoveryService.stu3({@required String iss}) {
-    assert(iss != null);
-    return MetaDataDiscoveryService._(iss, FhirServerVersion.stu3);
+  factory MetaDataDiscoveryService.stu3() {
+    return MetaDataDiscoveryService._(FhirServerVersion.stu3);
   }
 
-  final String iss;
   FhirServerVersion _version;
 
   /// Request for the CapabilityStatement (or Conformance) and then identifying
   /// the authUrl endpoint & tokenUrl endpoint.
   /// throw a AuthException exception when no metadata was found
-  Future<AuthMetaData> retrieveAuhMetadata() async {
-    var thisRequest = '$iss/metadata?mode=full&_format=json';
+  Future<AuthMetaData> retrieveAuhMetadata(String issuer) async {
+    var thisRequest = '$issuer/metadata?mode=full&_format=json';
 
     var result = await get(thisRequest);
 

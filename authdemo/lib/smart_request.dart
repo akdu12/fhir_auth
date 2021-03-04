@@ -2,8 +2,8 @@ import 'package:authdemo/in_memory_storage.dart';
 import 'package:fhir/primitive_types/primitive_types.dart';
 import 'package:fhir/r4.dart';
 import 'package:fhir_at_rest/r4.dart';
+import 'package:fhir_auth/auth.dart';
 import 'package:fhir_auth/r4.dart';
-import 'package:fhir_auth/r4/smart_client.dart';
 
 import 'new_patient.dart';
 
@@ -13,11 +13,11 @@ Future smartRequest({
   String secret,
   String authUrl,
   String tokenUrl,
-  FhirUri fhirCallback,
+  String fhirCallback,
 }) async {
   final client = SmartClient(
     oauthStorage: InMemoryStorage(),
-    baseUrl: FhirUri(url),
+    baseUrl: url,
     clientId: clientId,
     redirectUri: fhirCallback,
     scopes: Scopes(
@@ -32,8 +32,8 @@ Future smartRequest({
       offlineAccess: true,
     ).scopesList(),
     secret: secret,
-    authUrl: authUrl == null ? null : FhirUri(authUrl),
-    tokenUrl: tokenUrl == null ? null : FhirUri(tokenUrl),
+    authUrl: authUrl == null ? null : authUrl,
+    tokenUrl: tokenUrl == null ? null : tokenUrl,
   );
 
   try {
@@ -45,7 +45,7 @@ Future smartRequest({
   final _newPatient = newPatient();
   print('Patient to be uploaded: ${_newPatient.toJson()}');
   final request1 = FhirRequest.create(
-    base: client.baseUrl.uri,
+    base: Uri.parse(client.baseUrl),
     resource: _newPatient,
   );
 
@@ -63,7 +63,7 @@ Future smartRequest({
     print(newId);
   } else {
     final request2 = FhirRequest.read(
-      base: client.baseUrl.uri,
+      base: Uri.parse(client.baseUrl),
       type: R4ResourceType.Patient,
       id: newId,
     );

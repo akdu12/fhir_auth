@@ -1,18 +1,17 @@
 import 'dart:io';
 
 import 'package:dartz/dartz.dart';
-import 'package:fhir/primitive_types/primitive_types.dart';
+import 'package:fhir_auth/auth/fhir_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import 'package:fhir_auth/fhir_client.dart';
 
 class GcsClient extends FhirClient {
   GcsClient({@required this.baseUrl, List<String> scopes, String clientId}) {
     googleSignIn = GoogleSignIn(clientId: clientId, scopes: scopes);
   }
 
-  FhirUri baseUrl;
+  String baseUrl;
   GoogleSignIn googleSignIn;
   bool isLoggedIn = false;
 
