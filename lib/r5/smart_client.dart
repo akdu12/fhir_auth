@@ -218,7 +218,7 @@ class SmartClient extends FhirClient {
   Future<Unit> get _getEndpoints async {
     var thisRequest = '$baseUrl/metadata?mode=full&_format=json';
 
-    var result = await get(thisRequest);
+    var result = await get(Uri.parse(thisRequest));
 
     if (_errorCodeMap.containsKey(result.statusCode)) {
       if (result.statusCode == 422) {
@@ -226,7 +226,7 @@ class SmartClient extends FhirClient {
           '_format=json',
           '_format=application/json',
         );
-        result = await get(thisRequest);
+        result = await get(Uri.parse(thisRequest));
       }
       if (_errorCodeMap.containsKey(result.statusCode)) {
         throw AuthException('StatusCode: ${result.statusCode}\n${result.body}');
