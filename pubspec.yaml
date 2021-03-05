@@ -12,7 +12,10 @@ dependencies:
   fhir: 0.3.0-nullsafety.0
   flutter:
     sdk: flutter
-  flutter_appauth: ^0.9.2
+  flutter_appauth:
+    git:
+      url: https://github.com/akdu12/flutter_appauth.git
+      path: flutter_appauth
   flutter_secure_storage: ^4.0.0
   freezed_annotation: ^0.13.0-nullsafety.0
   google_sign_in: ^5.0.0
