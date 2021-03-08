@@ -128,7 +128,7 @@ class SmartClient extends FhirClient {
   @override
   Future<bool> alreadyLoggedIn() async {
     try {
-      final token = getToken();
+      final token = await getToken();
       return token != null;
     } on TokenExpiredException {
       return false;
